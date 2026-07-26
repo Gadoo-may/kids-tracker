@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>超级马里奥打卡大冒险</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="login-screen" class="login-screen">
+        <div class="login-content">
+            <div class="login-title">🎮 超级马里奥打卡大冒险</div>
+            <div class="login-subtitle">选择你的角色开始冒险！</div>
+            
+            <div id="character-list" class="character-list">
+            </div>
+            
+            <div id="new-character-form" class="new-character-form">
+                <input type="text" id="characterName" placeholder="输入角色昵称" maxlength="10">
+                <button class="create-character-btn" onclick="createNewCharacter()">创建角色</button>
+            </div>
+            
+            <div class="existing-characters">
+                <div class="existing-title">已有角色</div>
+                <div id="existing-character-list" class="existing-character-list">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <div class="game-header">
+            <div class="header-left">
+                <span class="mario-icon"></span>
+                <span class="game-title">SUPER MARIO</span>
+            </div>
+            <div class="header-right">
+                <div class="character-avatar-display" id="characterAvatarDisplay"></div>
+                <button class="switch-character-btn" onclick="showLoginScreen()">👤 切换</button>
+                <div class="coins-display">
+                    <span class="coin-icon"></span>
+                    <span class="coin-value" id="totalCoins">0</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="game-nav">
+            <button class="nav-btn active" data-tab="map">
+                <span class="nav-icon">🗺️</span>
+                <span class="nav-text">世界地图</span>
+            </button>
+            <button class="nav-btn" data-tab="calendar">
+                <span class="nav-icon">📅</span>
+                <span class="nav-text">日历</span>
+            </button>
+            <button class="nav-btn" data-tab="rewards">
+                <span class="nav-icon nav-icon-mushroom"></span>
+                <span class="nav-text">兑换商店</span>
+            </button>
+            <button class="nav-btn" data-tab="stats">
+                <span class="nav-icon nav-icon-pipe"></span>
+                <span class="nav-text">冒险记录</span>
+            </button>
+            <button class="nav-btn" data-tab="challenge">
+                <span class="nav-icon">💎</span>
+                <span class="nav-text">挑战任务</span>
+            </button>
+        </nav>
+
+        <main class="game-content">
+            <section id="map-tab" class="tab-content active">
+                <div class="world-header">
+                    <div class="world-info">
+                        <span class="world-number">WORLD <span id="currentWorld">1</span>-<span id="currentLevel">1</span></span>
+                        <span class="world-name">蘑菇王国</span>
+                    </div>
+                    <div class="streak-badge">
+                        <span class="streak-icon">🔥</span>
+                        <span class="streak-text">连续<span id="streakDays">0</span>天</span>
+                    </div>
+                </div>
+
+                <div class="level-progress">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-info">
+                        <span>进度: <span id="completedCount">0</span>/<span id="totalCount">0</span></span>
+                    </div>
+                </div>
+
+                <div class="date-selector">
+                    <button class="date-btn" onclick="changeDate(-1)">◀</button>
+                    <input type="date" id="selectedDate" onchange="onDateChange()">
+                    <button class="date-btn" onclick="changeDate(1)">▶</button>
+                    <button class="date-btn today-btn" onclick="goToToday()">今天</button>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <button class="manage-tasks-btn" onclick="showManageTasksModal()">✏️ 管理任务</button>
+                <button class="bonus-btn" onclick="showBonusModal()">➕ 加金币</button>
+                <button class="penalty-btn" onclick="showPenaltyModal()">➖ 扣金币</button>
+            </div>
+
+                <div class="map-area">
+                    <div class="map-background">
+                        <div class="cloud cloud-1">☁️</div>
+                        <div class="cloud cloud-2">☁️</div>
+                        <div class="mountain mountain-1">⛰️</div>
+                        <div class="mountain mountain-2">⛰️</div>
+                        
+                        <div class="game-tasks" id="gameTasks">
+                        </div>
+
+                        <div class="ground"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="calendar-tab" class="tab-content">
+                <div class="calendar-header">
+                    <button class="cal-nav-btn" onclick="changeMonth(-1)">◀</button>
+                    <h2 id="calendarTitle">2026年7月</h2>
+                    <button class="cal-nav-btn" onclick="changeMonth(1)">▶</button>
+                </div>
+
+                <div class="calendar-grid">
+                    <div class="calendar-weekdays">
+                        <div class="weekday">日</div>
+                        <div class="weekday">一</div>
+                        <div class="weekday">二</div>
+                        <div class="weekday">三</div>
+                        <div class="weekday">四</div>
+                        <div class="weekday">五</div>
+                        <div class="weekday">六</div>
+                    </div>
+                    <div class="calendar-days" id="calendarDays">
+                    </div>
+                </div>
+
+                <div class="calendar-legend">
+                    <div class="legend-item">
+                        <div class="legend-dot completed"></div>
+                        <span>全部完成</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot partial"></div>
+                        <span>部分完成</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot none"></div>
+                        <span>未打卡</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-dot today"></div>
+                        <span>今天</span>
+                    </div>
+                </div>
+
+                <div class="selected-date-info" id="selectedDateInfo">
+                </div>
+            </section>
+
+            <section id="rewards-tab" class="tab-content">
+                <div class="shop-header">
+                <h2>🍄 兑换商店</h2>
+                <div class="shop-coins">
+                    <span class="coin-icon"></span>
+                    <span class="coin-value" id="shopCoins">0</span>
+                </div>
+            </div>
+
+            <div class="shop-items" id="shopItems">
+            </div>
+
+            <div class="add-item-section">
+                <button class="add-item-btn" onclick="showAddRewardModal()">+ 添加新商品</button>
+                <button class="manage-items-btn" onclick="toggleShopManagement()">✏️ 管理商品</button>
+            </div>
+            </section>
+
+            <section id="stats-tab" class="tab-content">
+                <div class="stats-header">
+                    <h2>🌀 冒险记录</h2>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-block">
+                        <div class="stat-emoji">⭐</div>
+                        <div class="stat-value" id="totalStars">0</div>
+                        <div class="stat-label">累计通关</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-emoji coin-stat-icon"></div>
+                        <div class="stat-value" id="totalEarned">0</div>
+                        <div class="stat-label">累计金币</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-emoji">💸</div>
+                        <div class="stat-value" id="totalSpent">0</div>
+                        <div class="stat-label">累计消费</div>
+                    </div>
+                    <div class="stat-block">
+                        <div class="stat-emoji">🏆</div>
+                        <div class="stat-value" id="maxStreak">0</div>
+                        <div class="stat-label">最长连续</div>
+                    </div>
+                </div>
+
+                <div class="history-list" id="historyList">
+                </div>
+            </section>
+
+            <section id="challenge-tab" class="tab-content">
+                <div class="challenge-header">
+                    <h2>💎 挑战任务</h2>
+                    <div class="diamond-display">
+                        <span class="diamond-icon">💎</span>
+                        <span class="diamond-value" id="totalDiamonds">0</span>
+                    </div>
+                </div>
+
+                <div class="challenge-week-info">
+                    <span>本周: <span id="currentWeekRange"></span></span>
+                </div>
+
+                <div class="challenge-list">
+                    <div class="challenge-card" id="challengeCoins">
+                        <div class="challenge-icon">💰</div>
+                        <div class="challenge-info">
+                            <h3>周积分挑战</h3>
+                            <p class="challenge-desc">本周获得金币 ≥ 400</p>
+                            <div class="challenge-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="coinsProgress"></div>
+                                </div>
+                                <span class="progress-text"><span id="coinsCurrent">0</span>/400</span>
+                            </div>
+                            <div class="challenge-reward">奖励: 1 💎</div>
+                            <div class="challenge-status" id="coinsStatus"></div>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" id="challengeSport">
+                        <div class="challenge-icon">⚽</div>
+                        <div class="challenge-info">
+                            <h3>连续运动挑战</h3>
+                            <p class="challenge-desc">运动任务连续7天完成</p>
+                            <div class="challenge-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="sportProgress"></div>
+                                </div>
+                                <span class="progress-text"><span id="sportCurrent">0</span>/7 天</span>
+                            </div>
+                            <div class="challenge-reward">奖励: 1 💎</div>
+                            <div class="challenge-status" id="sportStatus"></div>
+                        </div>
+                    </div>
+
+                    <div class="challenge-card" id="challengeComplete">
+                        <div class="challenge-icon">🎯</div>
+                        <div class="challenge-info">
+                            <h3>全完成挑战</h3>
+                            <p class="challenge-desc">本周所有任务全部完成</p>
+                            <div class="challenge-progress">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="completeProgress"></div>
+                                </div>
+                                <span class="progress-text"><span id="completeCurrent">0</span>/7 天</span>
+                            </div>
+                            <div class="challenge-reward">奖励: 3 💎</div>
+                            <div class="challenge-status" id="completeStatus"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="roulette-section">
+                    <div class="roulette-info">
+                        <h3>🎰 幸运大转盘</h3>
+                        <p>每 3 💎 兑换一次转盘机会</p>
+                        <div class="roulette-diamonds">
+                            <span>钻石余额: <span id="rouletteDiamonds">0</span> 💎</span>
+                            <button class="roulette-btn" onclick="buyRouletteTicket()">兑换转盘次数</button>
+                        </div>
+                        <button class="roulette-play-btn" onclick="showRouletteModal()">🎰 开始转盘</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="addRewardModal" class="modal-overlay">
+            <div class="modal-content mario-modal">
+                <div class="modal-header">
+                    <h3>🍄 添加新道具</h3>
+                    <button class="close-modal" onclick="closeAddRewardModal()">✕</button>
+                </div>
+                <form id="addRewardForm">
+                    <div class="form-group">
+                        <label>商品名称</label>
+                        <input type="text" id="rewardName" required placeholder="例如：超级蘑菇">
+                    </div>
+                    <div class="form-group">
+                        <label>消耗金币</label>
+                        <input type="number" id="rewardPoints" required min="1" max="1000" value="50">
+                    </div>
+                    <div class="form-group">
+                        <label>兑换类型</label>
+                        <select id="rewardType">
+                            <option value="permanent">🔄 永久性（可重复兑换）</option>
+                            <option value="one-time">⏳ 一次性（兑换后消失）</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">确定添加</button>
+                    <button type="button" class="cancel-btn" style="margin-top: 10px;" onclick="closeAddRewardModal()">取消</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="confirmModal" class="modal-overlay">
+            <div class="modal-content mario-modal small">
+                <div class="modal-header">
+                    <h3>⚠️ 确认</h3>
+                </div>
+                <p id="confirmMessage"></p>
+                <div class="confirm-buttons">
+                    <button class="cancel-btn" onclick="closeConfirmModal()">取消</button>
+                    <button class="confirm-btn" id="confirmActionBtn">确定</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="manageTasksModal" class="modal-overlay">
+            <div class="modal-content mario-modal">
+                <div class="modal-header">
+                    <h3>📋 管理任务</h3>
+                    <button class="close-modal" onclick="closeManageTasksModal()">✕</button>
+                </div>
+                <div class="manage-tasks-content">
+                    <div class="add-task-form">
+                        <h4>➕ 添加新任务</h4>
+                        <form id="addTaskForm">
+                            <div class="form-group">
+                                <label>任务名称</label>
+                                <input type="text" id="taskName" required placeholder="例如：完成作业">
+                            </div>
+                            <div class="form-group">
+                                <label>任务类型</label>
+                                <select id="taskCategory" onchange="onCategoryChange()">
+                                    <option value="study">📚 学习</option>
+                                    <option value="life">🧹 生活</option>
+                                    <option value="sport">⚽ 运动</option>
+                                    <option value="custom">✏️ 自定义</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="customCategoryDiv" style="display: none;">
+                                <label>自定义类型名称</label>
+                                <input type="text" id="customCategoryName" placeholder="例如：钢琴练习">
+                            </div>
+                            <div class="form-group">
+                                <label>奖励金币</label>
+                                <input type="number" id="taskPoints" required min="1" max="100" value="10">
+                            </div>
+                            <div class="form-group">
+                                <label>是否需要计时</label>
+                                <select id="taskTimer" onchange="onTimerChange()">
+                                    <option value="no">不需要</option>
+                                    <option value="yes">需要</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="timerDurationDiv" style="display: none;">
+                                <label>计时时长（分钟）</label>
+                                <input type="number" id="taskTimerDuration" min="1" max="120" value="30">
+                            </div>
+                            <button type="submit" class="submit-btn">添加任务</button>
+                        </form>
+                    </div>
+                    <div class="task-list-section">
+                        <h4>📝 现有任务</h4>
+                        <div id="manageTaskList" class="manage-task-list"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bonusModal" class="modal-overlay">
+            <div class="modal-content mario-modal">
+                <div class="modal-header">
+                    <h3>➕ 加金币</h3>
+                    <button class="close-modal" onclick="closeBonusModal()">✕</button>
+                </div>
+                <form id="bonusForm">
+                    <div class="form-group">
+                        <label>加金币理由</label>
+                        <input type="text" id="bonusReason" required placeholder="例如：额外奖励">
+                    </div>
+                    <div class="form-group">
+                        <label>奖励金币</label>
+                        <input type="number" id="bonusPoints" required min="1" max="100" value="10">
+                    </div>
+                    <button type="submit" class="submit-btn" style="background: linear-gradient(180deg, #FFD700 0%, #FFA500 100%); color: #8B4513;">确认加金币</button>
+                    <button type="button" class="cancel-btn" style="margin-top: 10px;" onclick="closeBonusModal()">取消</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="penaltyModal" class="modal-overlay">
+            <div class="modal-content mario-modal">
+                <div class="modal-header">
+                    <h3>➖ 扣金币</h3>
+                    <button class="close-modal" onclick="closePenaltyModal()">✕</button>
+                </div>
+                <form id="penaltyForm">
+                    <div class="form-group">
+                        <label>扣金币理由</label>
+                        <input type="text" id="penaltyReason" required placeholder="例如：没完成作业">
+                    </div>
+                    <div class="form-group">
+                        <label>扣除金币</label>
+                        <input type="number" id="penaltyPoints" required min="1" max="100" value="10">
+                    </div>
+                    <button type="submit" class="submit-btn" style="background: linear-gradient(180deg, #FF6B6B 0%, #FF4757 100%); color: #fff;">确认扣金币</button>
+                    <button type="button" class="cancel-btn" style="margin-top: 10px;" onclick="closePenaltyModal()">取消</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="rouletteModal" class="modal-overlay roulette-modal">
+            <div class="modal-content roulette-content">
+                <div class="modal-header">
+                    <h3>🎰 幸运大转盘</h3>
+                    <button class="close-modal" onclick="closeRouletteModal()">✕</button>
+                </div>
+                <div class="roulette-container">
+                    <div class="roulette-wheel" id="rouletteWheel">
+                        <canvas id="rouletteCanvas" width="300" height="300"></canvas>
+                        <div class="roulette-center">🎮</div>
+                    </div>
+                    <div class="roulette-pointer">👇</div>
+                </div>
+                <div class="roulette-info-text">
+                    <span>剩余次数: <span id="rouletteTickets">0</span></span>
+                </div>
+                <button class="roulette-edit-btn" onclick="showEditRewardsModal()">✏️ 编辑奖励</button>
+                <button class="roulette-spin-btn" onclick="spinRoulette()">🎰 开始转动</button>
+            </div>
+        </div>
+
+        <div id="editRewardsModal" class="modal-overlay">
+            <div class="modal-content mario-modal">
+                <div class="modal-header">
+                    <h3>✏️ 编辑奖励</h3>
+                    <button class="close-modal" onclick="closeEditRewardsModal()">✕</button>
+                </div>
+                <div id="editRewardsContainer" style="padding: 15px;">
+                </div>
+                <button type="button" class="cancel-btn" style="margin-top: 10px;" onclick="closeEditRewardsModal()">关闭</button>
+            </div>
+        </div>
+
+        <div id="toast" class="toast">
+            <span id="toastMessage"></span>
+        </div>
+
+        <div id="coinAnimation" class="coin-animation"></div>
+    </div>
+
+    <script src="js/storage.js?v=8"></script>
+    <script src="js/app.js?v=8"></script>
+</body>
+</html>
