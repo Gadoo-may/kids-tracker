@@ -942,31 +942,50 @@ function checkWeekReset() {
         progress.sportDays = 0;
         progress.completeDays = 0;
         progress.lastWeek = weekRange.key;
+        progress.coinsRewardGiven = false;
+        progress.sportRewardGiven = false;
+        progress.completeRewardGiven = false;
         Storage.saveChallengeProgress(progress);
         
-        const savedProgress = calculateChallengeProgress();
-        
-        let diamondsEarned = 0;
-        if (savedProgress.coins >= 400) {
-            diamondsEarned += 1;
-        }
-        if (savedProgress.sportDays >= 7) {
-            diamondsEarned += 1;
-        }
-        if (savedProgress.completeDays >= 7) {
-            diamondsEarned += 3;
-        }
-        
-        if (diamondsEarned > 0) {
-            Storage.addDiamonds(diamondsEarned);
-            Storage.addHistory('earn', `周挑战奖励 +${diamondsEarned} 💎`, diamondsEarned);
-            showToast(`恭喜！上周挑战获得 ${diamondsEarned} 钻石！💎`);
-        }
+        checkAndAwardChallenges();
     }
+}
+
+function checkAndAwardChallenges() {
+    const progress = Storage.getChallengeProgress();
+    const currentProgress = calculateChallengeProgress();
+    
+    progress.coins = currentProgress.coins;
+    progress.sportDays = currentProgress.sportDays;
+    progress.completeDays = currentProgress.completeDays;
+    
+    let diamondsEarned = 0;
+    
+    if (progress.coins >= 400 && !progress.coinsRewardGiven) {
+        diamondsEarned += 1;
+        progress.coinsRewardGiven = true;
+    }
+    if (progress.sportDays >= 7 && !progress.sportRewardGiven) {
+        diamondsEarned += 1;
+        progress.sportRewardGiven = true;
+    }
+    if (progress.completeDays >= 7 && !progress.completeRewardGiven) {
+        diamondsEarned += 3;
+        progress.completeRewardGiven = true;
+    }
+    
+    if (diamondsEarned > 0) {
+        Storage.addDiamonds(diamondsEarned);
+        Storage.addHistory('earn', `挑战奖励 +${diamondsEarned} 💎`, diamondsEarned);
+        showToast(`🎉 恭喜！挑战达成，获得 ${diamondsEarned} 钻石！`);
+    }
+    
+    Storage.saveChallengeProgress(progress);
 }
 
 function renderChallenge() {
     checkWeekReset();
+    checkAndAwardChallenges();
     
     const weekRange = getWeekRange();
     document.getElementById('currentWeekRange').textContent = `${weekRange.start} ~ ${weekRange.end}`;

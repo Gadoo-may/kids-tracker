@@ -535,7 +535,10 @@ function getChallengeProgress() {
         coins: 0,
         sportDays: 0,
         completeDays: 0,
-        lastWeek: ''
+        lastWeek: '',
+        coinsRewardGiven: false,
+        sportRewardGiven: false,
+        completeRewardGiven: false
     };
 }
 
