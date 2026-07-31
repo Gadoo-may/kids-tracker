@@ -1032,8 +1032,36 @@ function buyRouletteTicket() {
     showConfirmModal('确定要花费 3 钻石兑换一次转盘机会吗？', () => {
         Storage.spendDiamonds(3);
         Storage.addRouletteTickets(1);
+        Storage.addHistory('spend', '兑换转盘机会 -3 💎', -3);
         renderChallenge();
         showToast('兑换成功！获得一次转盘机会 🎰');
+    });
+}
+
+function refreshDiamonds() {
+    showConfirmModal('确定要刷新钻石吗？系统会根据历史记录重新计算钻石数。', () => {
+        const history = Storage.loadData('kids_tracker_history') || [];
+        let calculatedDiamonds = 0;
+        
+        history.forEach(item => {
+            if (item.title && item.title.includes('💎')) {
+                calculatedDiamonds += item.points;
+            }
+        });
+        
+        if (calculatedDiamonds < 0) {
+            calculatedDiamonds = 0;
+        }
+        
+        const currentDiamonds = Storage.getDiamonds();
+        
+        if (calculatedDiamonds !== currentDiamonds) {
+            Storage.saveData('kids_tracker_diamonds', calculatedDiamonds);
+            renderChallenge();
+            showToast(`钻石已刷新！${currentDiamonds} → ${calculatedDiamonds} 💎`);
+        } else {
+            showToast('钻石数正确，无需更新');
+        }
     });
 }
 
