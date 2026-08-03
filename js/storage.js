@@ -493,12 +493,14 @@ function getTotalStats() {
     const history = loadData(STORAGE_KEYS.HISTORY) || [];
     const maxStreak = loadData(STORAGE_KEYS.MAX_STREAK) || 0;
     
-    const totalCompleted = history.filter(item => item.type === 'earn').length;
-    const totalEarned = history
+    const coinHistory = history.filter(item => !item.title || !item.title.includes('💎'));
+    
+    const totalCompleted = coinHistory.filter(item => item.type === 'earn').length;
+    const totalEarned = coinHistory
         .filter(item => item.type === 'earn')
         .reduce((sum, item) => sum + item.points, 0);
     const totalSpent = Math.abs(
-        history
+        coinHistory
             .filter(item => item.type === 'spend')
             .reduce((sum, item) => sum + item.points, 0)
     );
