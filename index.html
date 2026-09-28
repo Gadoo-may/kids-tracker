@@ -217,8 +217,7 @@
                     <h2>💎 挑战任务</h2>
                     <div class="diamond-display">
                         <span class="diamond-icon">💎</span>
-                        <span class="diamond-value" id="totalDiamonds">0</span>
-                        <button class="refresh-diamonds-btn" onclick="refreshDiamonds()" title="刷新钻石">🔄</button>
+                        <span class="diamond-value" id="totalDiamonds" onclick="diamondSecretClick(event)">0</span>
                     </div>
                 </div>
 
@@ -327,6 +326,30 @@
                 <div class="confirm-buttons">
                     <button class="cancel-btn" onclick="closeConfirmModal()">取消</button>
                     <button class="confirm-btn" id="confirmActionBtn">确定</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="adminModal" class="modal-overlay" onclick="if(event.target===this)closeAdminModal()">
+            <div class="modal-content mario-modal">
+                <button class="close-modal" onclick="closeAdminModal()">✕</button>
+                <h3>🔧 钻石管理</h3>
+                <div id="adminStep1">
+                    <p id="adminPwdTitle">请设置6位数字密码</p>
+                    <input type="password" id="adminPwdInput" maxlength="6" inputmode="numeric" placeholder="输入6位数字密码" onkeydown="if(event.key==='Enter')adminSubmitPwd()" style="width:100%;padding:12px;font-size:18px;border:3px solid #4682B4;border-radius:10px;box-sizing:border-box;letter-spacing:8px;text-align:center;">
+                    <div style="display:flex;gap:10px;margin-top:15px;">
+                        <button class="cancel-btn" style="flex:1;" onclick="closeAdminModal()">取消</button>
+                        <button class="confirm-btn" style="flex:1;" onclick="adminSubmitPwd()">下一步</button>
+                    </div>
+                </div>
+                <div id="adminStep2" style="display:none;">
+                    <p>当前钻石: <span id="adminCurrentDiamonds">0</span> 💎</p>
+                    <p>设置新的钻石数:</p>
+                    <input type="number" id="adminDiamondInput" placeholder="输入钻石数量" onkeydown="if(event.key==='Enter')adminSetDiamonds()" style="width:100%;padding:12px;font-size:18px;border:3px solid #4682B4;border-radius:10px;box-sizing:border-box;">
+                    <div style="display:flex;gap:10px;margin-top:15px;">
+                        <button class="cancel-btn" style="flex:1;" onclick="closeAdminModal()">取消</button>
+                        <button class="confirm-btn" style="flex:1;" onclick="adminSetDiamonds()">确认修改</button>
+                    </div>
                 </div>
             </div>
         </div>

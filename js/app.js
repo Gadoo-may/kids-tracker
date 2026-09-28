@@ -1038,31 +1038,85 @@ function buyRouletteTicket() {
     });
 }
 
-function refreshDiamonds() {
-    showConfirmModal('确定要刷新钻石吗？系统会根据历史记录重新计算钻石数。', () => {
-        const history = Storage.loadData('kids_tracker_history') || [];
-        let calculatedDiamonds = 0;
-        
-        history.forEach(item => {
-            if (item.title && item.title.includes('💎')) {
-                calculatedDiamonds += item.points;
-            }
-        });
-        
-        if (calculatedDiamonds < 0) {
-            calculatedDiamonds = 0;
-        }
-        
-        const currentDiamonds = Storage.getDiamonds();
-        
-        if (calculatedDiamonds !== currentDiamonds) {
-            Storage.saveData('kids_tracker_diamonds', calculatedDiamonds);
-            renderChallenge();
-            showToast(`钻石已刷新！${currentDiamonds} → ${calculatedDiamonds} 💎`);
-        } else {
-            showToast('钻石数正确，无需更新');
-        }
-    });
+let diamondSecretClicks = 0;
+let diamondSecretTimer = null;
+
+function diamondSecretClick(e) {
+    e.stopPropagation();
+    diamondSecretClicks++;
+    if (diamondSecretTimer) clearTimeout(diamondSecretTimer);
+    diamondSecretTimer = setTimeout(() => { diamondSecretClicks = 0; }, 1500);
+    if (diamondSecretClicks >= 3) {
+        diamondSecretClicks = 0;
+        openAdminModal();
+    }
+}
+
+function openAdminModal() {
+    const pwd = localStorage.getItem('kids_tracker_admin_pwd');
+    const step1 = document.getElementById('adminStep1');
+    const step2 = document.getElementById('adminStep2');
+    const pwdTitle = document.getElementById('adminPwdTitle');
+    const pwdInput = document.getElementById('adminPwdInput');
+    
+    step1.style.display = 'block';
+    step2.style.display = 'none';
+    pwdInput.value = '';
+    pwdInput.type = 'password';
+    
+    if (pwd) {
+        pwdTitle.textContent = '请输入6位数字密码';
+    } else {
+        pwdTitle.textContent = '首次使用，请设置6位数字密码';
+    }
+    
+    document.getElementById('adminModal').classList.add('show');
+    setTimeout(() => pwdInput.focus(), 100);
+}
+
+function closeAdminModal() {
+    document.getElementById('adminModal').classList.remove('show');
+}
+
+function adminSubmitPwd() {
+    const input = document.getElementById('adminPwdInput').value.trim();
+    const pwd = localStorage.getItem('kids_tracker_admin_pwd');
+    
+    if (!/^\d{6}$/.test(input)) {
+        showToast('请输入6位数字密码');
+        return;
+    }
+    
+    if (!pwd) {
+        localStorage.setItem('kids_tracker_admin_pwd', input);
+        showToast('密码设置成功');
+        showAdminStep2();
+    } else if (input === pwd) {
+        showAdminStep2();
+    } else {
+        showToast('密码错误，请重试');
+        document.getElementById('adminPwdInput').value = '';
+    }
+}
+
+function showAdminStep2() {
+    document.getElementById('adminStep1').style.display = 'none';
+    document.getElementById('adminStep2').style.display = 'block';
+    document.getElementById('adminCurrentDiamonds').textContent = Storage.getDiamonds();
+    document.getElementById('adminDiamondInput').value = '';
+}
+
+function adminSetDiamonds() {
+    const val = document.getElementById('adminDiamondInput').value.trim();
+    const num = parseInt(val, 10);
+    if (isNaN(num) || num < 0) {
+        showToast('请输入有效的钻石数量');
+        return;
+    }
+    Storage.saveData('kids_tracker_diamonds', num);
+    renderChallenge();
+    showToast(`钻石已修改为 ${num} 💎`);
+    closeAdminModal();
 }
 
 function showRouletteModal() {

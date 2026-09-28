@@ -1547,28 +1547,6 @@ body {
     color: #4682B4;
 }
 
-.refresh-diamonds-btn {
-    background: #fff;
-    border: 2px solid #4682B4;
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    cursor: pointer;
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.3s;
-}
-
-.refresh-diamonds-btn:hover {
-    transform: rotate(180deg);
-}
-
-.refresh-diamonds-btn:active {
-    transform: rotate(360deg);
-}
-
 .challenge-week-info {
     background: #fff;
     padding: 10px 15px;

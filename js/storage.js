@@ -233,7 +233,7 @@ function initData() {
 
     let diamonds = loadData(STORAGE_KEYS.DIAMONDS);
     if (diamonds === null) {
-        diamonds = 0;
+        diamonds = 3;
         saveData(STORAGE_KEYS.DIAMONDS, diamonds);
     }
 
