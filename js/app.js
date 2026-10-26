@@ -195,7 +195,6 @@ function renderMap() {
     sortedTasks.forEach((task, index) => {
         const isCompleted = Storage.checkTaskCompleted(task.id, dateStr);
         const isFailed = task.isMustDo ? Storage.checkTaskFailed(task.id, dateStr) : false;
-        const isExemptToday = task.isMustDo && task.exemptDays && task.exemptDays.includes(new Date(dateStr).getDay());
         const taskItem = document.createElement('div');
         taskItem.className = `game-task ${isCompleted ? 'completed' : ''} ${isFailed ? 'failed' : ''} ${isFuture ? 'future' : ''} ${task.isMustDo ? 'must-do' : ''}`;
         taskItem.style.animationDelay = `${index * 0.1}s`;
@@ -226,12 +225,16 @@ function renderMap() {
         
         let failedBadge = '';
         if (isFailed) {
-            failedBadge = '<span class="failed-badge">❌ 未完成</span>';
-        }
-        
-        let exemptBadge = '';
-        if (isExemptToday) {
-            exemptBadge = '<span class="exempt-badge">📅 免除日</span>';
+            // 显示已存储的天数标记（免除日/全部不累计不计入，不显示数字）
+            let dayMarkHtml = '';
+            const isExemptDay = task.exemptDays && task.exemptDays.includes(new Date(dateStr).getDay());
+            if (!isExemptDay) {
+                const mark = Storage.getFailDayNum(task.id, dateStr);
+                if (mark) {
+                    dayMarkHtml = ` <span class="fail-day-tag">${mark}</span>`;
+                }
+            }
+            failedBadge = `<span class="failed-badge">❌ 未完成${dayMarkHtml}</span>`;
         }
         
         let failButtonHtml = '';
@@ -247,7 +250,6 @@ function renderMap() {
                 <span class="task-category ${categoryClass}">${categoryText}</span>
                 ${isCompleted ? '<span class="completed-badge">✓ 已完成</span>' : ''}
                 ${failedBadge}
-                ${exemptBadge}
                 ${isFuture ? '<span class="future-badge">⏳ 未开放</span>' : ''}
                 ${timerHtml}
             </div>
@@ -316,33 +318,46 @@ function completeGameTask(taskId, taskPoints, dateStr, isPast) {
     });
 }
 
-function calculateConsecutiveFailDays(taskId, dateStr, exemptDays) {
-    const failedTasks = Storage.getFailedTasks();
-    const date = new Date(dateStr);
-    let consecutiveDays = 0;
-    let checkDate = new Date(date);
+const ALL_WEEK_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+function isExemptAllDays(task) {
+    return Array.isArray(task.exemptDays) && ALL_WEEK_DAYS.every(d => task.exemptDays.includes(d));
+}
+
+// 点击未完成时检查前一日状态（从前一天起向前找，跳过免除日）：
+// - 遇到已完成（含免除日完成）→ 终止累计，返回 completed
+// - 免除日未完成/未点击 → 忽略，继续往前
+// - 普通日已点击未完成 → 读取该日的天数标记，返回 failed
+// - 普通日未点击 → 返回 unclicked（弹窗询问是否继续）
+function getPrevFailMark(taskId, dateStr, exemptDays) {
+    let checkDate = new Date(dateStr);
+    checkDate.setDate(checkDate.getDate() - 1);
     
-    // Go backwards from the given date
     for (let i = 0; i < 365; i++) {
         const checkDateStr = Storage.formatDate(checkDate);
         const dayOfWeek = checkDate.getDay();
         
-        // Skip exempt days
+        // 已完成（含免除日完成）→ 终止累计
+        if (Storage.checkTaskCompleted(taskId, checkDateStr)) {
+            return { type: 'completed', dayNum: 0, dateStr: checkDateStr };
+        }
+        
+        // 免除日未完成/未点击 → 忽略
         if (exemptDays && exemptDays.includes(dayOfWeek)) {
             checkDate.setDate(checkDate.getDate() - 1);
             continue;
         }
         
-        // Check if this day is marked as failed
-        if (failedTasks[checkDateStr] && failedTasks[checkDateStr].includes(taskId)) {
-            consecutiveDays++;
-            checkDate.setDate(checkDate.getDate() - 1);
-        } else {
-            break;
+        // 普通日已点击未完成 → 读取天数标记累加
+        if (Storage.checkTaskFailed(taskId, checkDateStr)) {
+            return { type: 'failed', dayNum: Storage.getFailDayNum(taskId, checkDateStr) || 1, dateStr: checkDateStr };
         }
+        
+        // 普通日未点击 → 弹窗询问
+        return { type: 'unclicked', dayNum: 0, dateStr: checkDateStr };
     }
     
-    return consecutiveDays;
+    return { type: 'none', dayNum: 0, dateStr: Storage.formatDate(checkDate) };
 }
 
 function calculateFailPenalty(consecutiveDays) {
@@ -395,12 +410,9 @@ function failGameTask(taskId, dateStr, isPast, event) {
         return;
     }
     
-    // Calculate consecutive fail days
-    const consecutiveDays = calculateConsecutiveFailDays(taskId, dateStr, task.exemptDays);
-    const penalty = calculateFailPenalty(consecutiveDays + 1); // +1 because today is being marked as failed
-    
-    showConfirmModal(`确定要标记为未完成吗？将扣除 ${penalty} 金币！\n（连续未做第 ${consecutiveDays + 1} 天）`, () => {
-        Storage.failTask(taskId, dateStr);
+    // 执行标记：扣分并存储天数标记（dayNum 为 null 表示不计入累计）
+    const doFail = (penalty, dayNum) => {
+        Storage.failTask(taskId, dateStr, dayNum);
         
         // Deduct points
         const currentPoints = Storage.loadData('kids_tracker_points') || 0;
@@ -421,8 +433,51 @@ function failGameTask(taskId, dateStr, isPast, event) {
         }
         
         renderAll();
-        showToast(`标记未完成，扣除 ${penalty} 金币 💸`);
-    });
+        showToast(dayNum ? `标记未完成（第 ${dayNum} 天），扣除 ${penalty} 金币 💸` : `标记未完成，扣除 ${penalty} 金币 💸`);
+    };
+    
+    // 第一步：点击当天是免除日 → 无需理会其他日数据，只扣10分
+    const exemptAll = isExemptAllDays(task);
+    const isExemptToday = task.exemptDays && task.exemptDays.includes(new Date(dateStr).getDay());
+    if (exemptAll || isExemptToday) {
+        const msg = exemptAll
+            ? '确定要标记为未完成吗？将扣除 10 金币！\n（此任务不累计连续未做天数）'
+            : '确定要标记为未完成吗？将扣除 10 金币！\n（今日为免除日，不计入累计天数）';
+        showConfirmModal(msg, () => doFail(10, null));
+        return;
+    }
+    
+    // 第二步：检查前一天（跳过免除日）的未完成天数标记
+    const prev = getPrevFailMark(taskId, dateStr, task.exemptDays);
+    
+    // 前一日非免除日且未点击 → 询问是否继续（继续=当昨日已完成，记第1天；取消=回去修改前一日）
+    if (prev.type === 'unclicked') {
+        showConfirmModal(
+            `⚠️ 前一日（${prev.dateStr}）非免除日且未点击，是否继续？\n继续将把前一日当做已完成，本日记为未完成第 1 天，扣除 10 金币。`,
+            () => doFail(10, 1),
+            '继续标记（第1天）',
+            '取消，回去修改前一日',
+            () => goToTaskDate(dateStr, -1)
+        );
+        return;
+    }
+    
+    // 前一日已完成/无记录 → 第1天；前一日已点击未完成 → 其标记 +1
+    const dayNum = prev.dayNum + 1;
+    const penalty = calculateFailPenalty(dayNum);
+    const msg = prev.type === 'failed'
+        ? `确定要标记为未完成吗？前一日为未完成第 ${prev.dayNum} 天，本日记为第 ${dayNum} 天，将扣除 ${penalty} 金币！`
+        : `确定要标记为未完成吗？本日记为未完成第 1 天，将扣除 ${penalty} 金币！`;
+    showConfirmModal(msg, () => doFail(penalty, dayNum));
+}
+
+// 跳转到 dateStr 的前后 days 天（用于"回去前一日修改状态"）
+function goToTaskDate(dateStr, days) {
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + days);
+    selectedDate = d;
+    document.getElementById('selectedDate').value = Storage.formatDate(d);
+    renderAll();
 }
 
 function showCoinAnimation() {
@@ -817,6 +872,16 @@ function onEditMustDoChange() {
     exemptDiv.style.display = isMustDo ? 'block' : 'none';
 }
 
+function onExemptAllChange(allId, dayName) {
+    const checked = document.getElementById(allId).checked;
+    document.querySelectorAll(`input[name="${dayName}"]`).forEach(cb => cb.checked = checked);
+}
+
+function onExemptDayChange(allId, dayName) {
+    const checkboxes = document.querySelectorAll(`input[name="${dayName}"]`);
+    document.getElementById(allId).checked = Array.from(checkboxes).every(cb => cb.checked);
+}
+
 function changeDate(days) {
     selectedDate.setDate(selectedDate.getDate() + days);
     document.getElementById('selectedDate').value = Storage.formatDate(selectedDate);
@@ -885,8 +950,9 @@ function closePenaltyModal() {
 }
 
 let confirmCallback = null;
+let confirmCancelCallback = null;
 
-function showConfirmModal(message, callback, btnText) {
+function showConfirmModal(message, callback, btnText, cancelText, cancelCallback) {
     document.getElementById('confirmMessage').textContent = message;
     document.getElementById('confirmModal').classList.add('show');
     confirmCallback = callback;
@@ -899,11 +965,24 @@ function showConfirmModal(message, callback, btnText) {
         }
         closeConfirmModal();
     };
+    
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    cancelBtn.textContent = cancelText || '取消';
+    confirmCancelCallback = cancelCallback || null;
+}
+
+function onConfirmCancel() {
+    const cb = confirmCancelCallback;
+    closeConfirmModal();
+    if (cb) {
+        cb();
+    }
 }
 
 function closeConfirmModal() {
     document.getElementById('confirmModal').classList.remove('show');
     confirmCallback = null;
+    confirmCancelCallback = null;
 }
 
 function showToast(message) {
@@ -1096,6 +1175,7 @@ function editTask(taskId) {
     exemptCheckboxes.forEach(cb => {
         cb.checked = task.exemptDays && task.exemptDays.includes(parseInt(cb.value));
     });
+    onExemptDayChange('editExemptAll', 'editExemptDay');
     
     // Show/hide conditional fields
     onEditCategoryChange();

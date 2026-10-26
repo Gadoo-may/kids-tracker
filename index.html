@@ -324,7 +324,7 @@
                 </div>
                 <p id="confirmMessage"></p>
                 <div class="confirm-buttons">
-                    <button class="cancel-btn" onclick="closeConfirmModal()">取消</button>
+                    <button class="cancel-btn" id="confirmCancelBtn" onclick="onConfirmCancel()">取消</button>
                     <button class="confirm-btn" id="confirmActionBtn">确定</button>
                 </div>
             </div>
@@ -404,8 +404,9 @@
                                 </select>
                             </div>
                             <div class="form-group" id="exemptDaysDiv" style="display: none;">
-                                <label>免除日（可多选）</label>
-                                <div class="exempt-days-checkboxes">
+                                <label>免除日（可多选，当天标记未完成不累计连续天数）</label>
+                                <div class="exempt-days-checkboxes" onchange="onExemptDayChange('exemptAll', 'exemptDay')">
+                                    <label class="exempt-all-item"><input type="checkbox" id="exemptAll" onchange="onExemptAllChange('exemptAll', 'exemptDay')"> 🚫 全部不累计</label>
                                     <label><input type="checkbox" name="exemptDay" value="1"> 周一</label>
                                     <label><input type="checkbox" name="exemptDay" value="2"> 周二</label>
                                     <label><input type="checkbox" name="exemptDay" value="3"> 周三</label>
@@ -474,8 +475,9 @@
                         </select>
                     </div>
                     <div class="form-group" id="editExemptDaysDiv" style="display: none;">
-                        <label>免除日（可多选）</label>
-                        <div class="exempt-days-checkboxes">
+                        <label>免除日（可多选，当天标记未完成不累计连续天数）</label>
+                        <div class="exempt-days-checkboxes" onchange="onExemptDayChange('editExemptAll', 'editExemptDay')">
+                            <label class="exempt-all-item"><input type="checkbox" id="editExemptAll" onchange="onExemptAllChange('editExemptAll', 'editExemptDay')"> 🚫 全部不累计</label>
                             <label><input type="checkbox" name="editExemptDay" value="1"> 周一</label>
                             <label><input type="checkbox" name="editExemptDay" value="2"> 周二</label>
                             <label><input type="checkbox" name="editExemptDay" value="3"> 周三</label>

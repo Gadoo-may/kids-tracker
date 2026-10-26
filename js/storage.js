@@ -13,6 +13,7 @@ const STORAGE_KEYS = {
     ROULETTE_TICKETS: 'kids_tracker_roulette_tickets',
     ROULETTE_REWARDS: 'kids_tracker_roulette_rewards',
     FAILED_TASKS: 'kids_tracker_failed_tasks',
+    FAILED_TASK_DAYS: 'kids_tracker_failed_task_days',
     NEGATIVE_FLAG: 'kids_tracker_negative_flag'
 };
 
@@ -607,7 +608,7 @@ function checkTaskFailed(taskId, dateStr) {
     return failedTasks[dateStr].includes(taskId);
 }
 
-function failTask(taskId, dateStr) {
+function failTask(taskId, dateStr, dayNum) {
     const failedTasks = loadData(STORAGE_KEYS.FAILED_TASKS) || {};
     if (!failedTasks[dateStr]) {
         failedTasks[dateStr] = [];
@@ -617,7 +618,25 @@ function failTask(taskId, dateStr) {
     }
     failedTasks[dateStr].push(taskId);
     saveData(STORAGE_KEYS.FAILED_TASKS, failedTasks);
+    
+    // 存储未完成天数标记（免除日/全部不累计时 dayNum 为空，不存标记）
+    if (dayNum) {
+        const failedTaskDays = loadData(STORAGE_KEYS.FAILED_TASK_DAYS) || {};
+        if (!failedTaskDays[dateStr]) {
+            failedTaskDays[dateStr] = {};
+        }
+        failedTaskDays[dateStr][taskId] = dayNum;
+        saveData(STORAGE_KEYS.FAILED_TASK_DAYS, failedTaskDays);
+    }
     return true;
+}
+
+function getFailDayNum(taskId, dateStr) {
+    const failedTaskDays = loadData(STORAGE_KEYS.FAILED_TASK_DAYS) || {};
+    if (!failedTaskDays[dateStr]) {
+        return null;
+    }
+    return failedTaskDays[dateStr][taskId] || null;
 }
 
 function getFailedTasks() {
@@ -674,6 +693,7 @@ const Storage = {
     saveRouletteReward,
     checkTaskFailed,
     failTask,
+    getFailDayNum,
     getFailedTasks,
     getNegativeFlag,
     setNegativeFlag
