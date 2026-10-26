@@ -240,11 +240,11 @@ function renderMap() {
         }
         
         taskItem.innerHTML = `
+            ${mustDoBadge}
             <div class="task-character ${characterClass} ${isCompleted ? 'completed' : ''}"></div>
             <div class="task-info">
                 <div class="task-name">${task.name}</div>
                 <span class="task-category ${categoryClass}">${categoryText}</span>
-                ${mustDoBadge}
                 ${isCompleted ? '<span class="completed-badge">✓ 已完成</span>' : ''}
                 ${failedBadge}
                 ${exemptBadge}

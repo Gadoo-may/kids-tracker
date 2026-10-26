@@ -654,15 +654,21 @@ body {
 }
 
 .must-do-badge {
-    display: inline-block;
+    position: absolute;
+    top: 10px;
+    left: -34px;
+    transform: rotate(-45deg);
     background: linear-gradient(180deg, #FF6B6B 0%, #C92A2A 100%);
     color: #fff;
-    padding: 4px 10px;
-    border-radius: 8px;
+    padding: 3px 40px;
     font-size: 12px;
     font-weight: bold;
-    margin-left: 10px;
-    border: 2px solid #A61E1E;
+    text-align: center;
+    letter-spacing: 2px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 5;
+    pointer-events: none;
+    line-height: 1.4;
 }
 
 .failed-badge {
@@ -692,10 +698,6 @@ body {
 .game-task.failed {
     border-color: #FA5252;
     background: #FFF5F5;
-}
-
-.game-task.must-do {
-    border-left: 4px solid #FA5252;
 }
 
 .task-actions {
@@ -1259,6 +1261,10 @@ body {
 
 #addRewardModal {
     z-index: 1500;
+}
+
+#editTaskModal {
+    z-index: 3000;
 }
 
 #confirmModal {

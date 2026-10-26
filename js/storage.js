@@ -647,6 +647,7 @@ const Storage = {
     deductPoints,
     addHistory,
     addTask,
+    updateTask,
     deleteTask,
     addReward,
     deleteReward,
