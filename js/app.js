@@ -184,10 +184,20 @@ function renderMap() {
         return;
     }
     
-    tasks.forEach((task, index) => {
+    // Sort tasks: must-do first (by createdAt desc), then others
+    const sortedTasks = [...tasks].sort((a, b) => {
+        if (a.isMustDo && !b.isMustDo) return -1;
+        if (!a.isMustDo && b.isMustDo) return 1;
+        if (a.isMustDo && b.isMustDo) return (b.createdAt || 0) - (a.createdAt || 0);
+        return 0;
+    });
+    
+    sortedTasks.forEach((task, index) => {
         const isCompleted = Storage.checkTaskCompleted(task.id, dateStr);
+        const isFailed = task.isMustDo ? Storage.checkTaskFailed(task.id, dateStr) : false;
+        const isExemptToday = task.isMustDo && task.exemptDays && task.exemptDays.includes(new Date(dateStr).getDay());
         const taskItem = document.createElement('div');
-        taskItem.className = `game-task ${isCompleted ? 'completed' : ''} ${isFuture ? 'future' : ''}`;
+        taskItem.className = `game-task ${isCompleted ? 'completed' : ''} ${isFailed ? 'failed' : ''} ${isFuture ? 'future' : ''} ${task.isMustDo ? 'must-do' : ''}`;
         taskItem.style.animationDelay = `${index * 0.1}s`;
         
         const categoryText = getCategoryText(task.category);
@@ -209,23 +219,51 @@ function renderMap() {
             `;
         }
         
+        let mustDoBadge = '';
+        if (task.isMustDo) {
+            mustDoBadge = '<span class="must-do-badge">🔴 必做</span>';
+        }
+        
+        let failedBadge = '';
+        if (isFailed) {
+            failedBadge = '<span class="failed-badge">❌ 未完成</span>';
+        }
+        
+        let exemptBadge = '';
+        if (isExemptToday) {
+            exemptBadge = '<span class="exempt-badge">📅 免除日</span>';
+        }
+        
+        let failButtonHtml = '';
+        if (task.isMustDo && !isCompleted && !isFuture && !isFailed) {
+            failButtonHtml = `<button class="fail-btn" onclick="failGameTask('${task.id}', '${dateStr}', ${isPast}, event)">未完成</button>`;
+        }
+        
         taskItem.innerHTML = `
             <div class="task-character ${characterClass} ${isCompleted ? 'completed' : ''}"></div>
             <div class="task-info">
                 <div class="task-name">${task.name}</div>
                 <span class="task-category ${categoryClass}">${categoryText}</span>
+                ${mustDoBadge}
                 ${isCompleted ? '<span class="completed-badge">✓ 已完成</span>' : ''}
+                ${failedBadge}
+                ${exemptBadge}
                 ${isFuture ? '<span class="future-badge">⏳ 未开放</span>' : ''}
                 ${timerHtml}
             </div>
-            <div class="task-coin">
-                <span class="task-coin-value">+${task.points}</span>
-                <div class="coin-icon-img"></div>
+            <div class="task-actions">
+                ${failButtonHtml}
+                <div class="task-coin">
+                    <span class="task-coin-value">+${task.points}</span>
+                    <div class="coin-icon-img"></div>
+                </div>
             </div>
         `;
         
-        if (!isCompleted && !task.hasTimer && !isFuture) {
+        if (!isCompleted && !task.hasTimer && !isFuture && !isFailed) {
             taskItem.onclick = () => completeGameTask(task.id, task.points, dateStr, isPast);
+        } else if (!isCompleted && task.hasTimer && !isFuture && !isFailed) {
+            taskItem.onclick = null;
         }
         
         gameTasks.appendChild(taskItem);
@@ -275,6 +313,115 @@ function completeGameTask(taskId, taskPoints, dateStr, isPast) {
         } else {
             showToast(`太棒了！获得 ${taskPoints} 金币 🪙`);
         }
+    });
+}
+
+function calculateConsecutiveFailDays(taskId, dateStr, exemptDays) {
+    const failedTasks = Storage.getFailedTasks();
+    const date = new Date(dateStr);
+    let consecutiveDays = 0;
+    let checkDate = new Date(date);
+    
+    // Go backwards from the given date
+    for (let i = 0; i < 365; i++) {
+        const checkDateStr = Storage.formatDate(checkDate);
+        const dayOfWeek = checkDate.getDay();
+        
+        // Skip exempt days
+        if (exemptDays && exemptDays.includes(dayOfWeek)) {
+            checkDate.setDate(checkDate.getDate() - 1);
+            continue;
+        }
+        
+        // Check if this day is marked as failed
+        if (failedTasks[checkDateStr] && failedTasks[checkDateStr].includes(taskId)) {
+            consecutiveDays++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            break;
+        }
+    }
+    
+    return consecutiveDays;
+}
+
+function calculateFailPenalty(consecutiveDays) {
+    if (consecutiveDays <= 0) return 0;
+    if (consecutiveDays <= 2) return 10;
+    
+    // Day 3: 20, Day 4: 20, Day 5: 40, Day 6: 40, Day 7: 80...
+    // Doubles every 3rd day starting from day 3
+    let penalty = 10;
+    let multiplier = 1;
+    
+    for (let day = 3; day <= consecutiveDays; day++) {
+        if (day === 3) {
+            multiplier = 2;
+        } else if ((day - 3) % 2 === 0 && day > 3) {
+            multiplier *= 2;
+        }
+    }
+    
+    return penalty * multiplier;
+}
+
+function failGameTask(taskId, dateStr, isPast, event) {
+    if (event) {
+        event.stopPropagation();
+    }
+    
+    const tasks = Storage.loadData('kids_tracker_tasks') || [];
+    const task = tasks.find(t => t.id === taskId);
+    
+    if (!task) {
+        showToast('任务不存在！');
+        return;
+    }
+    
+    if (!task.isMustDo) {
+        showToast('只有必做任务才能标记未完成！');
+        return;
+    }
+    
+    const isCompleted = Storage.checkTaskCompleted(taskId, dateStr);
+    if (isCompleted) {
+        showToast('任务已完成，不能标记未完成！');
+        return;
+    }
+    
+    const isFailed = Storage.checkTaskFailed(taskId, dateStr);
+    if (isFailed) {
+        showToast('该日期已标记为未完成！');
+        return;
+    }
+    
+    // Calculate consecutive fail days
+    const consecutiveDays = calculateConsecutiveFailDays(taskId, dateStr, task.exemptDays);
+    const penalty = calculateFailPenalty(consecutiveDays + 1); // +1 because today is being marked as failed
+    
+    showConfirmModal(`确定要标记为未完成吗？将扣除 ${penalty} 金币！\n（连续未做第 ${consecutiveDays + 1} 天）`, () => {
+        Storage.failTask(taskId, dateStr);
+        
+        // Deduct points
+        const currentPoints = Storage.loadData('kids_tracker_points') || 0;
+        const newPoints = currentPoints - penalty;
+        Storage.saveData('kids_tracker_points', newPoints);
+        
+        // Add history
+        Storage.addHistory('penalty', `必做任务未完成: ${task.name} -${penalty}`, -penalty);
+        
+        // Check if points became negative
+        const wasNegative = Storage.getNegativeFlag();
+        if (newPoints < 0 && !wasNegative) {
+            Storage.setNegativeFlag(true);
+            showConfirmModal('⚠️ 金币首次变成负数！请注意及时完成任务赚取金币！', () => {}, '知道了');
+        } else if (newPoints >= 0 && wasNegative) {
+            Storage.setNegativeFlag(false);
+            showConfirmModal('🎉 金币已恢复为正数！继续加油！', () => {}, '太好了');
+        }
+        
+        renderAll();
+        showToast(`标记未完成，扣除 ${penalty} 金币 💸`);
     });
 }
 
@@ -550,15 +697,23 @@ function setupEventListeners() {
         const points = parseInt(document.getElementById('taskPoints').value);
         const hasTimer = document.getElementById('taskTimer').value === 'yes';
         const timerDuration = hasTimer ? parseInt(document.getElementById('taskTimerDuration').value) : 0;
+        const isMustDo = document.getElementById('taskIsMustDo').value === 'yes';
+        
+        let exemptDays = [];
+        if (isMustDo) {
+            const checkboxes = document.querySelectorAll('input[name="exemptDay"]:checked');
+            exemptDays = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
         
         if (category === 'custom' && customCategoryName) {
             category = 'custom_' + encodeURIComponent(customCategoryName);
         }
         
-        Storage.addTask({ name, category, points, hasTimer, timerDuration });
+        Storage.addTask({ name, category, points, hasTimer, timerDuration, isMustDo, exemptDays });
         document.getElementById('addTaskForm').reset();
         document.getElementById('customCategoryDiv').style.display = 'none';
         document.getElementById('timerDurationDiv').style.display = 'none';
+        document.getElementById('exemptDaysDiv').style.display = 'none';
         renderManageTaskList();
         showToast('任务添加成功！✅');
     });
@@ -580,6 +735,34 @@ function setupEventListeners() {
             renderAll();
             showToast(`已扣除 ${points} 金币！`);
         });
+    });
+    
+    document.getElementById('editTaskForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const taskId = document.getElementById('editTaskId').value;
+        const name = document.getElementById('editTaskName').value;
+        let category = document.getElementById('editTaskCategory').value;
+        const customCategoryName = document.getElementById('editCustomCategoryName').value;
+        const points = parseInt(document.getElementById('editTaskPoints').value);
+        const hasTimer = document.getElementById('editTaskTimer').value === 'yes';
+        const timerDuration = hasTimer ? parseInt(document.getElementById('editTaskTimerDuration').value) : 0;
+        const isMustDo = document.getElementById('editTaskIsMustDo').value === 'yes';
+        
+        let exemptDays = [];
+        if (isMustDo) {
+            const checkboxes = document.querySelectorAll('input[name="editExemptDay"]:checked');
+            exemptDays = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        }
+        
+        if (category === 'custom' && customCategoryName) {
+            category = 'custom_' + encodeURIComponent(customCategoryName);
+        }
+        
+        Storage.updateTask(taskId, { name, category, points, hasTimer, timerDuration, isMustDo, exemptDays });
+        closeEditTaskModal();
+        renderManageTaskList();
+        renderAll();
+        showToast('任务修改成功！✅');
     });
     
     document.getElementById('bonusForm').addEventListener('submit', (e) => {
@@ -608,6 +791,30 @@ function onTimerChange() {
     const hasTimer = document.getElementById('taskTimer').value === 'yes';
     const timerDiv = document.getElementById('timerDurationDiv');
     timerDiv.style.display = hasTimer ? 'block' : 'none';
+}
+
+function onMustDoChange() {
+    const isMustDo = document.getElementById('taskIsMustDo').value === 'yes';
+    const exemptDiv = document.getElementById('exemptDaysDiv');
+    exemptDiv.style.display = isMustDo ? 'block' : 'none';
+}
+
+function onEditCategoryChange() {
+    const category = document.getElementById('editTaskCategory').value;
+    const customDiv = document.getElementById('editCustomCategoryDiv');
+    customDiv.style.display = category === 'custom' ? 'block' : 'none';
+}
+
+function onEditTimerChange() {
+    const hasTimer = document.getElementById('editTaskTimer').value === 'yes';
+    const timerDiv = document.getElementById('editTimerDurationDiv');
+    timerDiv.style.display = hasTimer ? 'block' : 'none';
+}
+
+function onEditMustDoChange() {
+    const isMustDo = document.getElementById('editTaskIsMustDo').value === 'yes';
+    const exemptDiv = document.getElementById('editExemptDaysDiv');
+    exemptDiv.style.display = isMustDo ? 'block' : 'none';
 }
 
 function changeDate(days) {
@@ -679,12 +886,14 @@ function closePenaltyModal() {
 
 let confirmCallback = null;
 
-function showConfirmModal(message, callback) {
+function showConfirmModal(message, callback, btnText) {
     document.getElementById('confirmMessage').textContent = message;
     document.getElementById('confirmModal').classList.add('show');
     confirmCallback = callback;
     
-    document.getElementById('confirmActionBtn').onclick = () => {
+    const btn = document.getElementById('confirmActionBtn');
+    btn.textContent = btnText || '确定';
+    btn.onclick = () => {
         if (confirmCallback) {
             confirmCallback();
         }
@@ -844,15 +1053,61 @@ function renderManageTaskList() {
         const categoryText = getCategoryText(task.category);
         const item = document.createElement('div');
         item.className = 'manage-task-item';
+        
+        let mustDoTag = '';
+        if (task.isMustDo) {
+            mustDoTag = '<span class="must-do-tag">🔴 必做</span>';
+        }
+        
         item.innerHTML = `
             <div class="task-info">
-                <div class="task-name">${task.name}</div>
+                <div class="task-name">${task.name} ${mustDoTag}</div>
                 <div class="task-meta">${categoryText} · +${task.points} 🪙</div>
             </div>
-            <button class="delete-btn" onclick="deleteTask('${task.id}')">删除</button>
+            <div class="task-actions-manage">
+                <button class="edit-btn" onclick="editTask('${task.id}')">编辑</button>
+                <button class="delete-btn" onclick="deleteTask('${task.id}')">删除</button>
+            </div>
         `;
         taskList.appendChild(item);
     });
+}
+
+function editTask(taskId) {
+    const tasks = Storage.loadData('kids_tracker_tasks') || [];
+    const task = tasks.find(t => t.id === taskId);
+    
+    if (!task) {
+        showToast('任务不存在！');
+        return;
+    }
+    
+    document.getElementById('editTaskId').value = task.id;
+    document.getElementById('editTaskName').value = task.name;
+    document.getElementById('editTaskCategory').value = task.category.startsWith('custom_') ? 'custom' : task.category;
+    document.getElementById('editCustomCategoryName').value = task.category.startsWith('custom_') ? decodeURIComponent(task.category.substring(7)) : '';
+    document.getElementById('editTaskPoints').value = task.points;
+    document.getElementById('editTaskTimer').value = task.hasTimer ? 'yes' : 'no';
+    document.getElementById('editTaskTimerDuration').value = task.timerDuration || 30;
+    document.getElementById('editTaskIsMustDo').value = task.isMustDo ? 'yes' : 'no';
+    
+    // Set exempt days
+    const exemptCheckboxes = document.querySelectorAll('input[name="editExemptDay"]');
+    exemptCheckboxes.forEach(cb => {
+        cb.checked = task.exemptDays && task.exemptDays.includes(parseInt(cb.value));
+    });
+    
+    // Show/hide conditional fields
+    onEditCategoryChange();
+    onEditTimerChange();
+    onEditMustDoChange();
+    
+    document.getElementById('editTaskModal').classList.add('show');
+}
+
+function closeEditTaskModal() {
+    document.getElementById('editTaskModal').classList.remove('show');
+    document.getElementById('editTaskForm').reset();
 }
 
 function deleteTask(taskId) {

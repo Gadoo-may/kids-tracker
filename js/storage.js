@@ -11,7 +11,9 @@ const STORAGE_KEYS = {
     DIAMONDS: 'kids_tracker_diamonds',
     CHALLENGE_PROGRESS: 'kids_tracker_challenge_progress',
     ROULETTE_TICKETS: 'kids_tracker_roulette_tickets',
-    ROULETTE_REWARDS: 'kids_tracker_roulette_rewards'
+    ROULETTE_REWARDS: 'kids_tracker_roulette_rewards',
+    FAILED_TASKS: 'kids_tracker_failed_tasks',
+    NEGATIVE_FLAG: 'kids_tracker_negative_flag'
 };
 
 const CHARACTER_AVATARS = [
@@ -372,11 +374,6 @@ function redeemReward(rewardId, rewardName, rewardPoints, rewardType) {
 
 function deductPoints(reason, points) {
     const currentPoints = loadData(STORAGE_KEYS.POINTS) || 0;
-    
-    if (currentPoints < points) {
-        return false;
-    }
-
     const newPoints = currentPoints - points;
     saveData(STORAGE_KEYS.POINTS, newPoints);
     
@@ -413,11 +410,32 @@ function addTask(task) {
     const tasks = loadData(STORAGE_KEYS.TASKS) || [];
     const newTask = {
         id: generateId(),
+        isMustDo: false,
+        exemptDays: [],
+        createdAt: Date.now(),
         ...task
     };
+    if (newTask.isMustDo) {
+        newTask.createdAt = Date.now();
+    }
     tasks.push(newTask);
     saveData(STORAGE_KEYS.TASKS, tasks);
     return newTask;
+}
+
+function updateTask(taskId, updates) {
+    const tasks = loadData(STORAGE_KEYS.TASKS) || [];
+    const index = tasks.findIndex(t => t.id === taskId);
+    if (index !== -1) {
+        const oldIsMustDo = tasks[index].isMustDo;
+        tasks[index] = { ...tasks[index], ...updates };
+        if (updates.isMustDo && !oldIsMustDo) {
+            tasks[index].createdAt = Date.now();
+        }
+        saveData(STORAGE_KEYS.TASKS, tasks);
+        return tasks[index];
+    }
+    return null;
 }
 
 function deleteTask(taskId) {
@@ -581,6 +599,39 @@ function saveRouletteReward(index, text) {
     saveData(STORAGE_KEYS.ROULETTE_REWARDS, rewards);
 }
 
+function checkTaskFailed(taskId, dateStr) {
+    const failedTasks = loadData(STORAGE_KEYS.FAILED_TASKS) || {};
+    if (!failedTasks[dateStr]) {
+        return false;
+    }
+    return failedTasks[dateStr].includes(taskId);
+}
+
+function failTask(taskId, dateStr) {
+    const failedTasks = loadData(STORAGE_KEYS.FAILED_TASKS) || {};
+    if (!failedTasks[dateStr]) {
+        failedTasks[dateStr] = [];
+    }
+    if (failedTasks[dateStr].includes(taskId)) {
+        return false;
+    }
+    failedTasks[dateStr].push(taskId);
+    saveData(STORAGE_KEYS.FAILED_TASKS, failedTasks);
+    return true;
+}
+
+function getFailedTasks() {
+    return loadData(STORAGE_KEYS.FAILED_TASKS) || {};
+}
+
+function getNegativeFlag() {
+    return loadData(STORAGE_KEYS.NEGATIVE_FLAG) || false;
+}
+
+function setNegativeFlag(flag) {
+    saveData(STORAGE_KEYS.NEGATIVE_FLAG, flag);
+}
+
 const Storage = {
     initData,
     loadData,
@@ -619,5 +670,10 @@ const Storage = {
     addRouletteTickets,
     spendRouletteTicket,
     getRouletteRewards,
-    saveRouletteReward
+    saveRouletteReward,
+    checkTaskFailed,
+    failTask,
+    getFailedTasks,
+    getNegativeFlag,
+    setNegativeFlag
 };

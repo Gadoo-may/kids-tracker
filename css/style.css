@@ -653,6 +653,130 @@ body {
     border: 2px solid #424242;
 }
 
+.must-do-badge {
+    display: inline-block;
+    background: linear-gradient(180deg, #FF6B6B 0%, #C92A2A 100%);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 10px;
+    border: 2px solid #A61E1E;
+}
+
+.failed-badge {
+    display: inline-block;
+    background: linear-gradient(180deg, #FF8787 0%, #FA5252 100%);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 10px;
+    border: 2px solid #C92A2A;
+}
+
+.exempt-badge {
+    display: inline-block;
+    background: linear-gradient(180deg, #74C0FC 0%, #339AF0 100%);
+    color: #fff;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 10px;
+    border: 2px solid #1C7ED6;
+}
+
+.game-task.failed {
+    border-color: #FA5252;
+    background: #FFF5F5;
+}
+
+.game-task.must-do {
+    border-left: 4px solid #FA5252;
+}
+
+.task-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.fail-btn {
+    background: linear-gradient(180deg, #FF8787 0%, #FA5252 100%);
+    color: white;
+    border: 2px solid #C92A2A;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.fail-btn:hover {
+    transform: scale(1.05);
+}
+
+.fail-btn:active {
+    transform: scale(0.95);
+}
+
+.exempt-days-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.exempt-days-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.exempt-days-checkboxes input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.task-actions-manage {
+    display: flex;
+    gap: 8px;
+}
+
+.edit-btn {
+    background: linear-gradient(180deg, #74C0FC 0%, #339AF0 100%);
+    color: white;
+    border: 2px solid #1C7ED6;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.edit-btn:hover {
+    transform: scale(1.05);
+}
+
+.must-do-tag {
+    display: inline-block;
+    background: linear-gradient(180deg, #FF6B6B 0%, #C92A2A 100%);
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
 .game-task.future {
     opacity: 0.7;
     cursor: not-allowed;
